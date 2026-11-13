@@ -307,15 +307,15 @@ textarea.copy { position: absolute; left: -9999px; }
 .chip.top { border-color: var(--up); box-shadow: 0 0 0 1.5px var(--up), 0 8px 16px -8px var(--up); }
 .chip.top b, .chip.top .t { color: var(--up); }
 .err, .note { border-radius: 10px 20px 20px 20px; }
-.toast { border-radius: 16px; bottom: calc(100px + env(safe-area-inset-bottom, 0px)); }
+.toast { border-radius: 16px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); }
 
 /* sector swatch */
 .sw { display: inline-block; width: 6px; height: 18px; border-radius: 3px; flex: none; background: var(--none); }
 .chip .sw { width: 5px; height: 14px; margin-right: -1px; }
 
-/* floating tab bar with the flow Simulate > Symbols > Ranking */
-.view { padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
-.tabs { position: absolute; z-index: 15; left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+/* tab bar on top, with the flow Simulate > Symbols > Ranking */
+.view { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.tabs { position: relative; z-index: 15; flex: none; margin: 10px max(12px, env(safe-area-inset-right, 0px)) 2px max(12px, env(safe-area-inset-left, 0px));
   display: grid; grid-template-columns: 1fr 18px 1fr 18px 1fr; align-items: center; padding: 6px; border: 1px solid var(--line); border-radius: 28px;
   background: var(--surface-hi); box-shadow: var(--lift-strong); }
 .tab { padding: 7px 0 6px; border-radius: 22px; }
@@ -668,8 +668,8 @@ function render() {
   else body = simulateView();
 
   app.innerHTML =
-    '<div class="view" data-tab="' + S.tab + '"><div class="wrap">' + body + footer() + '</div></div>' +
     tabBar() +
+    '<div class="view" data-tab="' + S.tab + '"><div class="wrap">' + body + footer() + '</div></div>' +
     '<div class="sheet' + (S.detail ? ' open' : '') + '" aria-hidden="' + (S.detail ? 'false' : 'true') + '">' + (S.detail ? detailView() : '') + '</div>' +
     (S.toast ? '<div class="toast" role="status">' + esc(S.toast) + '</div>' : '');
 
