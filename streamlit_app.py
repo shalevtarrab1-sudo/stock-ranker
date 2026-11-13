@@ -138,7 +138,7 @@ event = _ui(
     error=ss.error,
     notice=ss.notice,
     mailReady=bool(mail_cfg) if ss.authed else False,
-    mailTo=_secret('MAIL_TO') if ss.authed else None,
+    mailTo=None,          # never expose the address to visitors
     key='ui',
     default=None,
 )
@@ -180,7 +180,7 @@ if isinstance(event, dict) and event.get('id') and event.get('id') != ss.last_id
         else:
             try:
                 _send_mail(mail_cfg, str(event.get('subject') or 'Stock Ranker'), str(event.get('body') or ''))
-                ss.notice = 'Sent to ' + mail_cfg['to']
+                ss.notice = 'Sent'
             except Exception as exc:
                 ss.error = f'Email failed: {type(exc).__name__}'
 
