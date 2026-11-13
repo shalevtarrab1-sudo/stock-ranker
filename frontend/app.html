@@ -147,6 +147,8 @@ button { cursor: pointer; background: none; border: 0; padding: 0; }
 .icon-btn { position: relative; width: 44px; height: 40px; border-radius: 11px; background: var(--surface); border: 1px solid var(--line); display: grid; place-items: center; }
 .icon-btn svg { width: 20px; height: 20px; }
 .icon-btn:disabled { opacity: .35; }
+.icon-btn.play { background: var(--accent); color: var(--on-accent); border-color: transparent; }
+.icon-btn.play svg { width: 18px; height: 18px; }
 .icon-btn .badge { position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 9px; background: var(--accent); color: var(--on-accent); font: 600 10.5px/18px var(--f-mono); }
 .movers { display: flex; gap: 6px; margin-top: 9px; overflow-x: auto; scrollbar-width: none; }
 .movers::-webkit-scrollbar { display: none; }
@@ -333,11 +335,12 @@ const S = {
   meta: null, payload: null, payloadId: null,
   authed: !LIVE, needsSetup: false, authBusy: false, authError: null, authTried: false,
   busy: false, busySince: 0, pendingId: null, runError: null,
-  tab: 'symbols', panel: 'results', detail: null,
+  tab: 'symbols', panel: 'weights', detail: null,
   tickers: store.get('tickers', DEFAULT_TICKERS.slice()),
   history: store.get('history', []),
   draft: '',
-  sim: null, undo: [], toast: null
+  sim: null, undo: [], toast: null,
+  applied: store.get('applied', null)   // weights in use on the Ranking tab (null = default)
 };
 
 /* ---------- model helpers ---------- */
@@ -367,6 +370,13 @@ const sum = a => a.reduce((s, x) => s + x, 0);
 function isDefaultWeights() { return S.sim.w.every((x, i) => x === M.wDef[i]); }
 function isDefaultPenalty() { return S.sim.k === 100 && S.sim.on.every(Boolean); }
 function weightsValid() { return sum(S.sim.w) === TOTAL; }
+function isDefaultModel(m) { return m.w.every((x, i) => x === M.wDef[i]) && m.k === 100 && m.on.every(Boolean); }
+function appliedModel() {
+  const a = S.applied;
+  if (!M || !a || !Array.isArray(a.w) || a.w.length !== M.wDef.length || sum(a.w) !== TOTAL) return null;
+  return isDefaultModel(a) ? null : a;
+}
+function sameAsApplied() { const a = appliedModel(); return a ? JSON.stringify([a.w, a.k, a.on]) === JSON.stringify([S.sim.w, S.sim.k, S.sim.on]) : isDefaultModel(S.sim); }
 
 function penaltyOf(s, sim) {
   if (!sim || (sim.k === 100 && sim.on.every(Boolean))) return s.penalty;
@@ -379,7 +389,7 @@ function penaltyOf(s, sim) {
 function evaluate(sim) {
   // sim = null -> the notebook's default model, numbers straight from Python
   const stocks = S.payload ? S.payload.stocks : [];
-  const useServer = !sim || (isDefaultWeights() && isDefaultPenalty());
+  const useServer = !sim || isDefaultModel(sim);
   const w = sim ? sim.w.map(x => x / 1000) : null;
   const rows = stocks.map(s => {
     let raw, pen;
@@ -633,14 +643,18 @@ function rankRow(r, maxScore, opts) {
 }
 function rankingView() {
   if (!S.payload) return appbar('') + '<div class="card empty" style="margin-top:20px"><b>No ranking yet</b>Pick symbols and tap Run ranking.</div><button class="btn primary block" style="margin-top:12px" data-tab-go="symbols">Choose symbols</button>';
-  const rows = evaluate(null);
+  const am = appliedModel();
+  const rows = evaluate(am);
   const max = Math.max(1, rows.length ? rows[0].score : 1);
   const P = S.payload;
+  let was = null;
+  if (am) { was = new Map(evaluate(null).map(r => [r.s.t, r.rank])); }
   return appbar(esc(asOf(P.asOf))) +
     (P.preview ? '<div class="note" style="margin-top:0">Preview built from your Excel of 13 Nov 2026. Live data loads in the deployed app.</div>' : '') +
-    '<div class="rank-head"><div><div class="eyebrow">Default weights · ' + rows.length + ' symbols</div><div class="h2" style="margin:0">Ranking</div></div>' +
-    '<div class="muted" style="font-size:12px;text-align:right">Score 0–100<br>tap a stock for detail</div></div>' +
-    '<div class="rows">' + rows.map(r => rankRow(r, max, { model: 'default' })).join('') + '</div>' +
+    '<div class="rank-head"><div><div class="eyebrow">' + (am ? 'Your weights' : 'Default weights') + ' · ' + rows.length + ' symbols</div><div class="h2" style="margin:0">Ranking</div></div>' +
+    (am ? '<button class="btn sm" data-act="unapply">' + ICON.reset + 'Default</button>' : '<div class="muted" style="font-size:12px;text-align:right">Score 0–100<br>tap a stock for detail</div>') + '</div>' +
+    (am ? '<div class="hint" style="margin:-2px 0 10px">▲▼ = places gained or lost vs your default weights.</div>' : '') +
+    '<div class="rows">' + rows.map(r => rankRow(r, max, am ? { model: 'applied', delta: was.get(r.s.t) - r.rank, was: was.get(r.s.t) } : { model: 'default' })).join('') + '</div>' +
     '<div class="hint" style="margin-top:12px">Scores are relative to this list. Each metric is scaled between the lowest and highest value among these symbols, so adding or removing a symbol can change everyone’s score.</div>';
 }
 
@@ -654,16 +668,18 @@ function simulateView() {
   if (cur) {
     const changed = cur.map(r => ({ t: r.s.t, d: was.get(r.s.t) - r.rank, r: r.rank })).filter(x => x.d !== 0).sort((a, b) => Math.abs(b.d) - Math.abs(a.d));
     movers = changed.length ? changed.slice(0, 12).map(x => '<span class="mover"><b>' + esc(x.t) + '</b>#' + x.r + '<span class="delta ' + (x.d > 0 ? 'up' : 'down') + '" style="min-width:0">' + (x.d > 0 ? '▲' : '▼') + Math.abs(x.d) + '</span></span>').join('') : '<span class="mover">Same order as default</span>';
-  } else movers = '<span class="mover" style="color:var(--down)">Weights must total 96.0% to score</span>';
+  } else movers = '<span class="mover" style="color:var(--down)">Fix the total under 29 weights</span>';
   const changedCount = cur ? cur.filter(r => was.get(r.s.t) !== r.rank).length : 0;
   const pdef = isDefaultPenalty();
-  const sumLine = (ok ? (isDefaultWeights() && pdef ? 'Default model' : changedCount + ' rank change' + (changedCount === 1 ? '' : 's') + ' vs default') : (tot < TOTAL ? pct(TOTAL - tot) + ' short' : pct(tot - TOTAL) + ' over')) + ' · momentum 4% fixed' + (pdef ? '' : ' · penalties ' + sim.k + '%');
+  const head = ok ? (isDefaultWeights() && pdef ? 'Default' : changedCount + ' rank change' + (changedCount === 1 ? '' : 's')) : (tot < TOTAL ? pct(TOTAL - tot) + ' missing' : pct(tot - TOTAL) + ' too much');
+  const sub = ok ? (sameAsApplied() ? (appliedModel() ? 'In use on Ranking' : 'Ranking uses default') : 'Tap ▶ to use on Ranking') : 'Weights do not add up';
 
   const bar =
     '<div class="simbar"><div class="simbar-top">' +
-    '<div class="sum"><div class="big' + (ok ? '' : ' bad') + '">' + pct(tot) + ' <span class="muted" style="font-size:13px;font-weight:500">of 96.0%</span></div><div class="small">' + esc(sumLine) + '</div></div>' +
+    '<div class="sum"><div class="big' + (ok ? '' : ' bad') + '" style="font-family:var(--f-display)">' + esc(head) + '</div><div class="small">' + esc(sub) + '</div></div>' +
     '<button class="icon-btn" data-act="undo" aria-label="Undo last change" title="Undo last change"' + (S.undo.length ? '' : ' disabled') + '>' + ICON.undo + (S.undo.length ? '<span class="badge">' + S.undo.length + '</span>' : '') + '</button>' +
-    '<button class="btn sm" data-act="default" style="height:40px"' + (isDefaultWeights() && pdef ? ' disabled' : '') + '>' + ICON.reset + 'Default</button>' +
+    '<button class="icon-btn" data-act="default" aria-label="Back to default weights" title="Back to default weights"' + (isDefaultWeights() && pdef ? ' disabled' : '') + '>' + ICON.reset + '</button>' +
+    '<button class="icon-btn play" data-act="apply" aria-label="Use these weights on Ranking" title="Use these weights on Ranking"' + (ok && !sameAsApplied() ? '' : ' disabled') + '>' + ICON.play + '</button>' +
     '</div><div class="movers">' + movers + '</div></div>';
 
   let panel = '';
@@ -672,9 +688,9 @@ function simulateView() {
   else panel = penaltyPanel();
 
   return bar +
-    '<div class="card radar-card">' + radarSvg() + '<div class="radar-help">Drag a dot along its line to shift weight between groups. Dashed line is your default.</div></div>' +
+    '<div class="card radar-card">' + radarSvg() + '<div class="radar-help">Drag a dot · dashed = default</div></div>' +
     '<div class="seg" role="tablist">' +
-    ['results', 'weights', 'penalties'].map(p => '<button role="tab" data-panel="' + p + '" aria-selected="' + (S.panel === p) + '">' + { results: 'vs Default', weights: '29 weights', penalties: 'Penalties' }[p] + '</button>').join('') +
+    ['weights', 'penalties', 'results'].map(p => '<button role="tab" data-panel="' + p + '" aria-selected="' + (S.panel === p) + '">' + { results: 'vs Default', weights: '29 weights', penalties: 'Penalties' }[p] + '</button>').join('') +
     '</div>' + panel;
 }
 
@@ -713,9 +729,9 @@ function radarSvg() {
 
 function weightsPanel() {
   const sim = S.sim;
-  let html = '<div class="toolrow"><label class="switch"><input type="checkbox" id="auto"' + (sim.auto ? ' checked' : '') + '>Auto-balance to 96%</label>' +
+  let html = '<div class="toolrow"><label class="switch"><input type="checkbox" id="auto"' + (sim.auto ? ' checked' : '') + '>Auto-balance</label>' +
     '<button class="btn sm" data-act="copy">' + ICON.copy + 'Copy as Python</button></div>' +
-    '<div class="hint" style="margin-top:0">Drag a bar or use − / +. ' + (sim.auto ? 'Other unlocked weights adjust so the total stays at 96.0%. Lock a weight to keep it fixed.' : 'Auto-balance is off: the simulated ranking is blocked until the total is 96.0%.') + '</div>';
+    (sim.auto ? '' : '<div class="hint" style="margin-top:0">Total now ' + pct(sum(sim.w)) + ' (needs 96.0%).</div>');
   M.cats.forEach(c => {
     const t = catTotal(c, sim.w);
     html += '<div class="group"><div class="group-h"><span class="t">' + esc(c.label) + '</span><span class="s">' + pct(t) + (t !== c.def ? ' <span class="muted">· default ' + pct(c.def) + '</span>' : '') + '</span></div><div class="card">';
@@ -740,10 +756,9 @@ function weightRow(i) {
 function penaltyPanel() {
   const sim = S.sim, stocks = S.payload.stocks;
   const hasResidual = stocks.some(s => s.residual !== 1);
-  let html = '<div class="hint" style="margin-top:14px">Penalties multiply the score. They are kept apart from the weights: 100% with every rule on is your notebook exactly.</div>' +
-    '<div class="card" style="padding:12px 14px;margin-top:10px"><div class="toolrow" style="margin:0"><b style="font-size:14px">Penalty strength</b><span class="num" id="kval">' + sim.k + '%</span></div>' +
+  let html = '<div class="card" style="padding:12px 14px;margin-top:14px"><div class="toolrow" style="margin:0"><b style="font-size:14px">Penalty strength</b><span class="num" id="kval">' + sim.k + '%</span></div>' +
     '<input class="slider" type="range" id="kslider" min="0" max="100" step="5" value="' + sim.k + '" aria-label="Penalty strength">' +
-    '<div class="hint" style="margin-top:2px">At 50%, a ×0.6 rule acts as ×0.8. At 0%, no rule applies.</div></div>' +
+    '<div class="hint" style="margin-top:2px">100% = notebook · 50%: ×0.6 acts as ×0.8 · 0% = off</div></div>' +
     '<div class="card" style="margin-top:10px">';
   M.rules.forEach((r, j) => {
     const n = stocks.filter(s => s.hits[j]).length;
@@ -751,19 +766,20 @@ function penaltyPanel() {
       '<label class="switch"><input type="checkbox" data-rule="' + j + '"' + (sim.on[j] ? ' checked' : '') + ' aria-label="' + esc(r.label) + '"></label></div>';
   });
   html += '</div>';
-  if (hasResidual) html += '<div class="hint">Preview only: momentum and trend rules are not in the Excel, so their combined effect is kept as one fixed factor per stock. It follows the strength slider.</div>';
+  if (hasResidual) html += '<div class="hint">Preview: momentum rules are not in the Excel; their combined factor follows the slider.</div>';
   return html;
 }
 
 /* Detail */
 function detailView() {
-  const d = S.detail, sim = d.model === 'sim' ? S.sim : null;
-  const rows = evaluate(sim && weightsValid() ? sim : null);
+  const d = S.detail, sim = d.model === 'sim' ? S.sim : d.model === 'applied' ? appliedModel() : null;
+  const ok = sim && sum(sim.w) === TOTAL;
+  const rows = evaluate(ok ? sim : null);
   const r = rows.find(x => x.s.t === d.t);
   if (!r) return '';
-  const s = r.s, w = (sim && weightsValid() ? sim.w : M.wDef).map(x => x / 1000);
+  const s = r.s, w = (ok ? sim.w : M.wDef).map(x => x / 1000);
   const name = [s.name, s.sector, s.industry].filter(Boolean).join(' · ');
-  const modelLbl = sim && weightsValid() && !(isDefaultWeights() && isDefaultPenalty()) ? 'Simulated weights' : 'Default weights';
+  const modelLbl = ok && !isDefaultModel(sim) ? (d.model === 'applied' ? 'Your weights' : 'Simulated weights') : 'Default weights';
 
   // score build-up by group
   let build = '';
@@ -874,6 +890,8 @@ function act(a) {
   else if (a === 'undo') undo();
   else if (a === 'default') { const b = snapshot(); const locks = S.sim.locks.map(() => false); Object.assign(S.sim, { w: M.wDef.slice(), k: 100, on: M.rules.map(() => true), locks: locks }); commit(b); render(); toast('Back to your default weights'); }
   else if (a === 'copy') copyPython();
+  else if (a === 'apply') { if (!weightsValid()) return; S.applied = isDefaultModel(S.sim) ? null : { w: S.sim.w.slice(), k: S.sim.k, on: S.sim.on.slice() }; store.set('applied', S.applied); S.tab = 'ranking'; S.detail = null; scrollMemo.ranking = 0; render(); toast(S.applied ? 'Ranking now uses your weights' : 'Ranking uses default weights'); }
+  else if (a === 'unapply') { S.applied = null; store.set('applied', null); render(); toast('Ranking back to default weights'); }
   else if (a === 'close') { S.detail = null; render(); }
 }
 
