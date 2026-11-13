@@ -292,8 +292,15 @@ def build_frame(infos: dict, tickers: list[str]) -> pd.DataFrame:
 # The model (notebook sections 3-8)
 # --------------------------------------------------------------------------
 
-def score_frame(df: pd.DataFrame, weights: dict | None = None) -> pd.DataFrame:
-    """Run the notebook logic on a raw-attribute frame. Returns a scored copy."""
+def score_frame(df: pd.DataFrame, weights: dict | None = None,
+                penalty_cfg: dict | None = None) -> pd.DataFrame:
+    """Run the notebook logic on a raw-attribute frame. Returns a scored copy.
+
+    weights: Norm_ column -> weight (29 entries, sum 0.96). None = notebook default.
+    penalty_cfg: {'k': strength 0-1, 'on': [16 bools]}. None = notebook penalty.
+    The notebook block itself always runs unchanged; a custom penalty is
+    applied afterwards from the same 16 rules.
+    """
     df = df.copy()
     weights = dict(DEFAULT_WEIGHTS if weights is None else weights)
 
@@ -437,7 +444,42 @@ def score_frame(df: pd.DataFrame, weights: dict | None = None) -> pd.DataFrame:
     if not np.allclose(check.to_numpy(), penalty.to_numpy(), rtol=0, atol=1e-12):
         raise AssertionError('Penalty rule table is out of sync with the notebook penalty block')
 
+    if penalty_cfg is not None and not _is_default_penalty(penalty_cfg):
+        custom = custom_penalty(df, penalty_cfg)
+        df['Penalty'] = custom
+        df['FinalScore'] = df['RawScore'] * custom
+        df['Score'] = df['FinalScore'] * 100
+        df['Rank'] = df['FinalScore'].rank(ascending=False, method='dense').astype(int)
+
     return pd.concat([df, pd.DataFrame(hits, index=df.index)], axis=1)
+
+
+def _is_default_penalty(cfg: dict) -> bool:
+    on = cfg.get('on') or [True] * len(PENALTY_RULES)
+    return abs(float(cfg.get('k', 1.0)) - 1.0) < 1e-9 and all(on)
+
+
+def custom_penalty(df: pd.DataFrame, cfg: dict) -> pd.Series:
+    """Same 16 rules; a rule that is off is skipped, strength k softens each
+    multiplier: x m becomes x (1 - k (1 - m)). k = 1 is the notebook."""
+    k = min(max(float(cfg.get('k', 1.0)), 0.0), 1.0)
+    on = list(cfg.get('on') or [True] * len(PENALTY_RULES))
+    out = pd.Series(1.0, index=df.index)
+    for i, (_key, _label, mult, cond) in enumerate(PENALTY_RULES):
+        if i < len(on) and not on[i]:
+            continue
+        out[cond(df).astype(bool)] *= 1 - k * (1 - mult)
+    return out
+
+
+def weights_from_model(model: dict | None) -> dict | None:
+    """App model {'w': 29 ints in 0.1% units, total 960} -> notebook weights dict."""
+    if not model or not model.get('w'):
+        return None
+    w = [int(x) for x in model['w']]
+    if len(w) != len(METRICS) or any(x < 0 for x in w) or sum(w) != 960:
+        raise ValueError('Weights must be 29 non-negative values totalling 96%.')
+    return {f'Norm_{m}': x / 1000 for m, x in zip(METRICS, w)}
 
 
 # --------------------------------------------------------------------------
@@ -555,8 +597,14 @@ def build_payload(df: pd.DataFrame, errors: dict | None = None,
     }
 
 
-def run(tickers, weights: dict | None = None, cache: dict | None = None, fetcher=None) -> dict:
-    """Fetch, score and package a ranking for the given symbols."""
+def run(tickers, weights: dict | None = None, cache: dict | None = None, fetcher=None,
+        model: dict | None = None) -> dict:
+    """Fetch, score and package a ranking for the given symbols.
+
+    model: the app's weights/penalty {'w', 'k', 'on'}. When given and not the
+    default, the ranking is scored with it in Python, and each stock also
+    carries the default-model score/rank for comparison.
+    """
     symbols = clean_tickers(tickers)
     if not symbols:
         raise ValueError('Add at least one symbol.')
@@ -566,5 +614,28 @@ def run(tickers, weights: dict | None = None, cache: dict | None = None, fetcher
     if len(errors) == len(symbols):
         first = next(iter(errors.values()))
         raise RuntimeError(f'Yahoo Finance returned no data for any symbol ({first}).')
-    df = score_frame(build_frame(infos, symbols), weights)
-    return build_payload(df, errors)
+    frame = build_frame(infos, symbols)
+    if model:
+        weights = weights_from_model(model) or weights
+        pen = {'k': model.get('k', 1.0), 'on': model.get('on')}
+    else:
+        pen = None
+    df = score_frame(frame, weights, pen)
+    payload = build_payload(df, errors)
+    custom = (weights is not None and weights != DEFAULT_WEIGHTS) or \
+        (pen is not None and not _is_default_penalty(pen))
+    if custom:
+        base = score_frame(frame)
+        for st in payload['stocks']:
+            r = base.loc[st['t']]
+            st['def'] = {'score': float(r['Score']), 'rank': int(r['Rank']),
+                         'penalty': float(r['Penalty']), 'rawScore': float(r['RawScore'])}
+        payload['model'] = {
+            'w': [int(round(weights[f'Norm_{m}'] * 1000)) for m in METRICS]
+            if weights is not None else None,
+            'k': float(pen['k']) if pen else 1.0,
+            'on': list(pen['on']) if pen and pen.get('on') else [True] * len(PENALTY_RULES),
+        }
+    else:
+        payload['model'] = None
+    return payload

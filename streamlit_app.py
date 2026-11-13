@@ -124,6 +124,8 @@ ss.setdefault('notice', None)
 
 pw = _password()
 mail_cfg = _mail_config()
+if pw is None:          # no APP_PASSWORD secret: open access, no lock screen
+    ss.authed = True
 
 event = _ui(
     authed=bool(ss.authed),
@@ -162,7 +164,9 @@ if isinstance(event, dict) and event.get('id') and event.get('id') != ss.last_id
 
     elif kind == 'run' and ss.authed:
         try:
-            ss.payload = core.run(event.get('tickers') or [], cache=_info_cache(), fetcher=_fetcher())
+            model = event.get('model') if isinstance(event.get('model'), dict) else None
+            ss.payload = core.run(event.get('tickers') or [], cache=_info_cache(),
+                                  fetcher=_fetcher(), model=model)
             ss.payload_id = event['id']
             bad = [s['t'] for s in ss.payload['stocks'] if s['noData']]
             if bad:

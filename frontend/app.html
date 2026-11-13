@@ -442,6 +442,28 @@ function appliedModel() {
 }
 function sameAsApplied() { const a = appliedModel(); return a ? JSON.stringify([a.w, a.k, a.on]) === JSON.stringify([S.sim.w, S.sim.k, S.sim.on]) : isDefaultModel(S.sim); }
 
+/* A Python run with your weights returns its own numbers plus the default ones
+   (s.def). Keep s.* = default model everywhere; the run's numbers go to s.cust. */
+function normalizePayload(p) {
+  if (!p || !p.stocks || p._n) return p;
+  p._n = true;
+  if (p.model) {
+    p.stocks.forEach(s => {
+      if (!s.def) return;
+      s.cust = { rawScore: s.rawScore, penalty: s.penalty, score: s.score, rank: s.rank };
+      s.rawScore = s.def.rawScore; s.penalty = s.def.penalty; s.score = s.def.score; s.rank = s.def.rank;
+    });
+  }
+  return p;
+}
+function serverModel() {
+  const m = S.payload && S.payload.model;
+  if (!m || !M) return null;
+  return { w: Array.isArray(m.w) ? m.w : M.wDef.slice(), k: Math.round(m.k * 100), on: m.on };
+}
+function sameModel(a, b) { return !!a && !!b && JSON.stringify([a.w, a.k, a.on]) === JSON.stringify([b.w, b.k, b.on]); }
+function ranInPython(sim) { return !sim || isDefaultModel(sim) || sameModel(sim, serverModel()); }
+
 function penaltyOf(s, sim) {
   if (!sim || (sim.k === 100 && sim.on.every(Boolean))) return s.penalty;
   const k = sim.k / 100;
@@ -454,10 +476,12 @@ function evaluate(sim) {
   // sim = null -> the notebook's default model, numbers straight from Python
   const stocks = S.payload ? S.payload.stocks : [];
   const useServer = !sim || isDefaultModel(sim);
+  const useCust = !useServer && sameModel(sim, serverModel());
   const w = sim ? sim.w.map(x => x / 1000) : null;
   const rows = stocks.map(s => {
     let raw, pen;
     if (useServer) { raw = s.rawScore; pen = s.penalty; }
+    else if (useCust && s.cust) { raw = s.cust.rawScore; pen = s.cust.penalty; }
     else {
       raw = 0;
       for (let i = 0; i < w.length; i++) raw += s.norm[i] * w[i];
@@ -465,11 +489,12 @@ function evaluate(sim) {
       pen = penaltyOf(s, sim);
     }
     const fin = raw * pen;
-    return { s: s, raw: raw, pen: pen, fin: fin, score: useServer ? s.score : fin * 100 };
+    const c = useCust && s.cust;
+    return { s: s, raw: raw, pen: pen, fin: fin, score: useServer ? s.score : c ? c.score : fin * 100, srvRank: useServer ? s.rank : c ? c.rank : null };
   });
   const uniq = Array.from(new Set(rows.map(r => r.fin))).sort((a, b) => b - a);
   const pos = new Map(uniq.map((v, i) => [v, i + 1]));
-  rows.forEach(r => { r.rank = useServer ? r.s.rank : pos.get(r.fin); });
+  rows.forEach(r => { r.rank = r.srvRank != null ? r.srvRank : pos.get(r.fin); });
   rows.sort((a, b) => a.rank - b.rank || a.s.t.localeCompare(b.s.t));
   return rows;
 }
@@ -591,7 +616,9 @@ function run() {
   S.history = hist; store.set('history', hist);
   if (!LIVE) { S.runError = 'This preview runs on the data from your 13 Nov Excel. Live runs work in the deployed app.'; render(); return; }
   S.busy = true; S.busySince = Date.now(); S.runError = null; S.pendingId = newId();
-  ST.value({ type: 'run', id: S.pendingId, tickers: S.tickers.slice() });
+  const am = appliedModel();
+  ST.value({ type: 'run', id: S.pendingId, tickers: S.tickers.slice(),
+    model: am ? { w: am.w.slice(), k: am.k / 100, on: am.on.slice() } : null });
   render();
   clearInterval(run.t); run.t = setInterval(() => { if (!S.busy) clearInterval(run.t); else renderBusyTimer(); }, 1000);
 }
@@ -730,10 +757,12 @@ function rankingView() {
   const nPen = all.filter(r => r.pen < 1).length, nClean = all.length - nPen;
   const rows = all.filter(r => S.penFilter === 'pen' ? r.pen < 1 : S.penFilter === 'clean' ? r.pen >= 1 : true);
   const mail = mailButton(all, am);
+  const py = ranInPython(am);
+  const rerun = LIVE && !py ? '<button class="icon-btn" data-act="run" aria-label="Run in Python with these weights" title="Run in Python with these weights">' + ICON.play + '</button>' : '';
   return appbar(esc(asOf(P.asOf))) +
     (P.preview ? '<div class="note" style="margin:0 0 12px">Preview · Excel of 13 Nov 2026</div>' : '') +
-    '<div class="rank-head"><div><div class="eyebrow">' + (am ? 'Your weights' : 'Default weights') + '</div><div class="h2" style="margin:0">Ranking</div></div>' +
-    '<div class="head-actions">' + (am ? '<button class="icon-btn" data-act="unapply" aria-label="Back to default weights" title="Back to default weights">' + ICON.reset + '</button>' : '') + mail + '</div></div>' +
+    '<div class="rank-head"><div><div class="eyebrow">' + (am ? 'Your weights' : 'Default weights') + (LIVE ? (py ? ' · Python run' : ' · not run yet') : '') + '</div><div class="h2" style="margin:0">Ranking</div></div>' +
+    '<div class="head-actions">' + rerun + (am ? '<button class="icon-btn" data-act="unapply" aria-label="Back to default weights" title="Back to default weights">' + ICON.reset + '</button>' : '') + mail + '</div></div>' +
     '<div class="filters" role="group" aria-label="Filter by penalty">' +
     '<button class="fchip" data-pf="pen" aria-pressed="' + (S.penFilter === 'pen') + '">Penalty <span>' + nPen + '</span></button>' +
     '<button class="fchip" data-pf="clean" aria-pressed="' + (S.penFilter === 'clean') + '">No penalty <span>' + nClean + '</span></button></div>' +
@@ -990,7 +1019,9 @@ function act(a) {
   else if (a === 'undo') undo();
   else if (a === 'default') { const b = snapshot(); const locks = S.sim.locks.map(() => false); Object.assign(S.sim, { w: M.wDef.slice(), k: 100, on: M.rules.map(() => true), locks: locks }); commit(b); render(); toast('Back to your default weights'); }
   else if (a === 'copy') copyPython();
-  else if (a === 'apply') { if (!weightsValid()) return; S.applied = isDefaultModel(S.sim) ? null : { w: S.sim.w.slice(), k: S.sim.k, on: S.sim.on.slice() }; store.set('applied', S.applied); S.tab = S.payload ? 'ranking' : 'symbols'; S.detail = null; scrollMemo.ranking = 0; render(); toast(S.applied ? 'Ranking now uses your weights' : 'Ranking uses default weights'); }
+  else if (a === 'apply') { if (!weightsValid()) return; S.applied = isDefaultModel(S.sim) ? null : { w: S.sim.w.slice(), k: S.sim.k, on: S.sim.on.slice() }; store.set('applied', S.applied); S.detail = null; scrollMemo.ranking = 0;
+    if (LIVE && S.tickers.length) { S.tab = 'symbols'; run(); toast(S.applied ? 'Running Python with your weights' : 'Running Python with default weights'); }
+    else { S.tab = S.payload ? 'ranking' : 'symbols'; render(); toast(S.applied ? 'Ranking now uses your weights' : 'Ranking uses default weights'); } }
   else if (a === 'mail') { if (!S.payload || S.mailBusy) return; const am = appliedModel(); const m = mailText(evaluate(am), am); S.mailBusy = true; S.pendingId = newId(); ST.value({ type: 'mail', id: S.pendingId, subject: m.subject, body: m.body }); render(); }
   else if (a === 'unapply') { S.applied = null; store.set('applied', null); render(); toast('Ranking back to default weights'); }
   else if (a === 'close') { S.detail = null; render(); }
@@ -1118,7 +1149,7 @@ function onRender(args) {
     if (S.mailBusy) { S.mailBusy = false; setTimeout(() => toast(args.error || args.notice || 'Sent'), 0); }
   }
   if (args.payload && args.payloadId && args.payloadId !== S.payloadId) {
-    S.payload = args.payload; S.payloadId = args.payloadId;
+    S.payload = normalizePayload(args.payload); S.payloadId = args.payloadId;
     store.set('payload', args.payload);
     rememberRun(args.payload);
     if (S.tab === 'symbols') S.tab = 'ranking';
@@ -1131,7 +1162,7 @@ function onRender(args) {
   }
   if (S.authed && !wasAuthed && !S.payload) {
     const cached = store.get('payload', null);
-    if (cached && cached.stocks) { S.payload = cached; S.tab = 'ranking'; }
+    if (cached && cached.stocks) { S.payload = normalizePayload(cached); S.tab = 'ranking'; }
   }
   render();
   fitHeight();
@@ -1145,7 +1176,7 @@ if (LIVE) {
   fitHeight();
 } else {
   initMeta(BOOT.meta);
-  S.payload = BOOT.payload; S.authed = true;
+  S.payload = normalizePayload(BOOT.payload); S.authed = true;
   rememberRun(BOOT.payload);
   if (!store.get('tickers', null)) S.tickers = BOOT.payload.stocks.map(s => s.t);
   S.tab = 'ranking';
