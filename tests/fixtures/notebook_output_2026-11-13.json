@@ -1,0 +1,32 @@
+{
+  "_comment": "The ranking table the Colab notebook displayed on 2026-11-13 (Rank, Score, BullishScore, sector, industry).",
+  "rows": [
+    ["avgo", 1, 60.853374, 0.55, "Technology", "Semiconductors"],
+    ["mpwr", 2, 55.597166, 0.50, "Technology", "Semiconductors"],
+    ["ntes", 3, 55.136252, 0.35, "Communication Services", "Electronic Gaming & Multimedia"],
+    ["nxpi", 4, 46.323672, 0.50, "Technology", "Semiconductors"],
+    ["dell", 5, 46.212634, 0.65, "Technology", "Computer Hardware"],
+    ["ntap", 6, 44.533666, 0.50, "Technology", "Software - Infrastructure"],
+    ["payc", 7, 43.135319, 0.80, "Technology", "Software - Application"],
+    ["ter", 8, 43.114153, 0.20, "Technology", "Semiconductor Equipment & Materials"],
+    ["zbra", 9, 40.406434, 0.55, "Technology", "Communication Equipment"],
+    ["Amd", 10, 39.718499, 0.85, "Technology", "Semiconductors"],
+    ["p", 11, 39.138171, 0.60, "Technology", "Computer Hardware"],
+    ["intu", 12, 38.869714, 0.50, "Technology", "Software - Application"],
+    ["jkhy", 13, 38.194091, 0.80, "Technology", "Information Technology Services"],
+    ["ibkr", 14, 37.542325, 0.60, "Financial Services", "Capital Markets"],
+    ["hood", 15, 35.564085, 0.50, "Financial Services", "Capital Markets"],
+    ["vrt", 16, 33.344341, 0.20, "Industrials", "Electrical Equipment & Parts"],
+    ["BE", 17, 32.828215, 0.50, "Industrials", "Electrical Equipment & Parts"],
+    ["txn", 18, 32.738830, 0.90, "Technology", "Semiconductors"],
+    ["cat", 19, 31.048211, 0.00, "Industrials", "Farm & Heavy Construction Machinery"],
+    ["ldos", 20, 25.670985, 0.50, "Technology", "Information Technology Services"],
+    ["logi", 21, 24.852678, 0.50, "Technology", "Computer Hardware"],
+    ["acn", 22, 23.613642, 0.90, "Technology", "Information Technology Services"],
+    ["rop", 23, 21.699517, 0.80, "Technology", "Software - Application"],
+    ["qcom", 24, 21.595373, 0.50, "Technology", "Semiconductors"],
+    ["ptc", 25, 19.313634, 0.80, "Technology", "Software - Application"],
+    ["mstr", 26, 8.937496, 0.50, "Technology", "Software - Application"],
+    ["fisv", 27, 5.419306, 0.55, null, null]
+  ]
+}
