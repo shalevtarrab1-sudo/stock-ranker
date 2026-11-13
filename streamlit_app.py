@@ -11,7 +11,10 @@ from __future__ import annotations
 import hashlib
 import hmac
 import os
+import smtplib
+import ssl
 import time
+from email.message import EmailMessage
 from pathlib import Path
 
 import streamlit as st
@@ -51,6 +54,36 @@ def _password() -> str | None:
     return str(v) if v else None
 
 
+def _secret(name: str) -> str | None:
+    try:
+        v = st.secrets.get(name)
+    except Exception:
+        v = None
+    v = v or os.environ.get(name)
+    return str(v) if v else None
+
+
+def _mail_config() -> dict | None:
+    """SMTP settings for the email button. All three secrets are needed to send from the server."""
+    user, pwd, to = _secret('SMTP_USER'), _secret('SMTP_PASSWORD'), _secret('MAIL_TO')
+    if not (user and pwd and to):
+        return None
+    return {'user': user, 'password': pwd, 'to': to,
+            'host': _secret('SMTP_HOST') or 'smtp.gmail.com', 'port': int(_secret('SMTP_PORT') or 465)}
+
+
+def _send_mail(cfg: dict, subject: str, body: str) -> None:
+    msg = EmailMessage()
+    msg['From'], msg['To'], msg['Subject'] = cfg['user'], cfg['to'], subject[:200]
+    msg.set_content(body[:20000], charset='utf-8')
+    # monospace HTML copy so the columns line up in the inbox
+    html_body = body[:20000].replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+    msg.add_alternative(f'<pre style="font:13px/1.5 Menlo,Consolas,monospace">{html_body}</pre>', subtype='html')
+    with smtplib.SMTP_SSL(cfg['host'], cfg['port'], context=ssl.create_default_context(), timeout=20) as srv:
+        srv.login(cfg['user'], cfg['password'])
+        srv.send_message(msg)
+
+
 def _device_token(pw: str) -> str:
     """What a remembered device keeps instead of the code. Changes if the code changes."""
     return hmac.new(pw.encode(), b'stock-ranker/device/v1', hashlib.sha256).hexdigest()
@@ -87,8 +120,10 @@ ss.setdefault('payload_id', None)
 ss.setdefault('error', None)
 ss.setdefault('token', None)
 ss.setdefault('fails', 0)
+ss.setdefault('notice', None)
 
 pw = _password()
+mail_cfg = _mail_config()
 
 event = _ui(
     authed=bool(ss.authed),
@@ -99,6 +134,9 @@ event = _ui(
     token=ss.token if ss.authed else None,
     ack=ss.last_id,
     error=ss.error,
+    notice=ss.notice,
+    mailReady=bool(mail_cfg) if ss.authed else False,
+    mailTo=_secret('MAIL_TO') if ss.authed else None,
     key='ui',
     default=None,
 )
@@ -106,6 +144,7 @@ event = _ui(
 if isinstance(event, dict) and event.get('id') and event.get('id') != ss.last_id:
     ss.last_id = event['id']
     ss.error = None
+    ss.notice = None
     kind = event.get('type')
 
     if kind == 'auth' and pw:
@@ -130,5 +169,15 @@ if isinstance(event, dict) and event.get('id') and event.get('id') != ss.last_id
                 ss.error = 'No usable data for ' + ', '.join(bad) + '. Check the spelling.'
         except Exception as exc:                        # shown on the Symbols screen
             ss.error = str(exc)[:300]
+
+    elif kind == 'mail' and ss.authed:
+        if not mail_cfg:
+            ss.error = 'Email is not set up on the server.'
+        else:
+            try:
+                _send_mail(mail_cfg, str(event.get('subject') or 'Stock Ranker'), str(event.get('body') or ''))
+                ss.notice = 'Sent to ' + mail_cfg['to']
+            except Exception as exc:
+                ss.error = f'Email failed: {type(exc).__name__}'
 
     st.rerun()

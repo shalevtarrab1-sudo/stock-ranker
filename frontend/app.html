@@ -29,6 +29,10 @@
   --f-body: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
   --f-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --r: 14px;
+  --drop: 10px 26px 26px 26px;          /* drop-shaped cards: one tight corner, three round */
+  --surface-hi: #18212E;
+  --lift: 0 14px 26px -14px rgba(0, 0, 0, .85), 0 3px 8px -2px rgba(0, 0, 0, .45);
+  --lift-strong: 0 18px 34px -12px rgba(0, 0, 0, .9), 0 4px 10px rgba(0, 0, 0, .45);
   color-scheme: dark;
 }
 @media (prefers-color-scheme: light) {
@@ -41,6 +45,9 @@
     --warn: #A15C07; --warn-soft: rgba(161, 92, 7, .10);
     --none: #7A8699; --none-soft: rgba(122, 134, 153, .14);
     --shadow: 0 10px 30px rgba(20, 30, 50, .14);
+    --surface-hi: #FFFFFF;
+    --lift: 0 14px 26px -16px rgba(25, 40, 80, .35), 0 3px 8px -3px rgba(25, 40, 80, .12);
+    --lift-strong: 0 18px 34px -14px rgba(25, 40, 80, .38), 0 4px 10px rgba(25, 40, 80, .10);
     color-scheme: light;
   }
 }
@@ -53,6 +60,9 @@
   --warn: #A15C07; --warn-soft: rgba(161, 92, 7, .10);
   --none: #7A8699; --none-soft: rgba(122, 134, 153, .14);
   --shadow: 0 10px 30px rgba(20, 30, 50, .14);
+  --surface-hi: #FFFFFF;
+  --lift: 0 14px 26px -16px rgba(25, 40, 80, .35), 0 3px 8px -3px rgba(25, 40, 80, .12);
+  --lift-strong: 0 18px 34px -14px rgba(25, 40, 80, .38), 0 4px 10px rgba(25, 40, 80, .10);
   color-scheme: light;
 }
 
@@ -274,6 +284,48 @@ details.more[open] summary { border-bottom: 1px solid var(--line); }
 .empty { padding: 28px 18px; text-align: center; color: var(--muted); }
 .empty b { display: block; color: var(--fg); font-family: var(--f-display); font-size: 16px; margin-bottom: 4px; }
 textarea.copy { position: absolute; left: -9999px; }
+
+/* ---------- Drop look: floating, softly lit surfaces ---------- */
+.card, .row, .stat, .busy { border-radius: var(--drop); background: linear-gradient(180deg, var(--surface-hi), var(--surface)); border: 1px solid var(--line); box-shadow: var(--lift); }
+.rows { gap: 12px; }
+.row { padding: 13px 14px; }
+.row:active { transform: translateY(1px); box-shadow: 0 6px 14px -8px rgba(0,0,0,.6); }
+.input { border-radius: 18px; box-shadow: var(--lift); }
+.btn { border-radius: 18px; }
+.btn.primary { box-shadow: 0 14px 24px -12px var(--accent); }
+.btn.sm { border-radius: 14px; }
+.icon-btn { border-radius: 16px; box-shadow: var(--lift); }
+.icon-btn.play { box-shadow: 0 12px 22px -10px var(--accent); }
+.seg { border-radius: 22px; box-shadow: var(--lift); }
+.seg button { border-radius: 18px; }
+.chip { box-shadow: 0 6px 12px -8px rgba(0,0,0,.7); }
+.chip.top { border-color: var(--up); box-shadow: 0 0 0 1.5px var(--up), 0 8px 16px -8px var(--up); }
+.chip.top b, .chip.top .t { color: var(--up); }
+.err, .note { border-radius: 10px 20px 20px 20px; }
+.toast { border-radius: 16px; bottom: calc(100px + env(safe-area-inset-bottom, 0px)); }
+
+/* sector swatch */
+.sw { display: inline-block; width: 6px; height: 18px; border-radius: 3px; flex: none; background: var(--none); }
+.chip .sw { width: 5px; height: 14px; margin-right: -1px; }
+
+/* floating tab bar with the flow Simulate > Symbols > Ranking */
+.view { padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px)); }
+.tabs { position: absolute; z-index: 15; left: max(12px, env(safe-area-inset-left, 0px)); right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  display: grid; grid-template-columns: 1fr 18px 1fr 18px 1fr; align-items: center; padding: 6px; border: 1px solid var(--line); border-radius: 28px;
+  background: var(--surface-hi); box-shadow: var(--lift-strong); }
+.tab { padding: 7px 0 6px; border-radius: 22px; }
+.tab[aria-selected="true"] { background: var(--accent-soft); }
+.flow { color: var(--faint); display: grid; place-items: center; }
+.flow svg { width: 16px; height: 16px; }
+
+/* ranking filters */
+.filters { display: flex; gap: 8px; margin: 0 0 12px; }
+.fchip { height: 32px; padding: 0 14px; border-radius: 16px; border: 1px solid var(--line); background: var(--surface); font-size: 13px; font-weight: 600; color: var(--muted); display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 6px 12px -8px rgba(0,0,0,.6); }
+.fchip span { font-family: var(--f-mono); font-weight: 500; font-size: 12px; }
+.fchip[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: transparent; }
+.head-actions { display: flex; gap: 8px; align-items: center; }
+a.icon-btn { color: var(--fg); text-decoration: none; }
+.legend-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 0 1.5px var(--up); margin-right: 5px; vertical-align: 0; }
 </style>
 
 <div id="app"><div class="empty" style="margin-top:30vh">Loading…</div></div>
@@ -285,13 +337,19 @@ textarea.copy { position: absolute; left: -9999px; }
 
 /* ---------- constants ---------- */
 const COLAB_URL = 'https://colab.research.google.com/drive/18U0uuRS2HR34gCnf5dPD2Vm__LxqY1Wi';
-const AUTHOR = 'Shalev Yaakov Tarrab';
+const AUTHOR = 'Shalev Tarrab';
 const DEFAULT_TICKERS = ['IBKR','HOOD','AVGO','P','TER','BE','MSTR','QCOM','DELL','LDOS','LOGI','TXN','ACN','MPWR','FISV','NXPI','ROP','PTC','PAYC','VRT','INTU','NTAP','NTES','CAT','AMD','ZBRA','JKHY'];
 const TOTAL = 960;          // 29 weights must total 96.0% (units of 0.1%)
 const RADAR_MAX = 300;      // radar outer ring = 30%
 const BAR_MAX = 100;        // weight track = 0 to 10%
 const RADAR_R = 118;        // radar radius in SVG units (centre 180,168)
 const BOOT = window.__BOOT__ || null;
+const SECTOR_COLORS = {
+  'Technology': '#6EA8FE', 'Communication Services': '#C084FC', 'Consumer Cyclical': '#F59E0B',
+  'Consumer Defensive': '#A3E635', 'Financial Services': '#2DD4BF', 'Healthcare': '#F472B6',
+  'Industrials': '#94A3B8', 'Energy': '#FB923C', 'Basic Materials': '#D4A373',
+  'Real Estate': '#FACC15', 'Utilities': '#22D3EE'
+};
 const LIVE = !BOOT;
 
 const ICON = {
@@ -311,6 +369,8 @@ const ICON = {
   check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
   dash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M7 12h10"/></svg>',
   copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2"/></svg>',
+  mail: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M4 7l8 6 8-6"/></svg>',
+  chev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>',
   notebook: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.5.5l3-3a5 5 0 00-7-7l-1.7 1.7"/><path d="M14 11a5 5 0 00-7.5-.5l-3 3a5 5 0 007 7l1.7-1.7"/></svg>'
 };
 
@@ -340,7 +400,11 @@ const S = {
   history: store.get('history', []),
   draft: '',
   sim: null, undo: [], toast: null,
-  applied: store.get('applied', null)   // weights in use on the Ranking tab (null = default)
+  applied: store.get('applied', null),  // weights in use on the Ranking tab (null = default)
+  top3: store.get('top3', []),           // symbols that were ever in a run's top 3
+  sectors: store.get('sectors', {}),     // last known sector per symbol (for colour swatches)
+  penFilter: null,                       // null | 'pen' | 'clean'
+  mailReady: false, mailTo: null, mailBusy: false
 };
 
 /* ---------- model helpers ---------- */
@@ -463,6 +527,19 @@ function undo() {
 }
 function saveSim() { store.set('sim', S.sim); }
 
+function swatch(sector) { const c = SECTOR_COLORS[sector]; return '<span class="sw"' + (c ? ' style="background:' + c + '"' : '') + ' title="' + esc(sector || 'Unknown sector') + '"></span>'; }
+function rememberRun(payload) {
+  // remember sectors and who made the top 3 of the ranking shown for this run
+  payload.stocks.forEach(s => { if (s.sector) S.sectors[s.t] = s.sector; });
+  store.set('sectors', S.sectors);
+  if (!M) return;
+  const top = evaluate(appliedModel()).filter(r => !r.s.noData && r.rank <= 3).map(r => r.s.t);
+  let changed = false;
+  top.forEach(t => { if (S.top3.indexOf(t) < 0) { S.top3.push(t); changed = true; } });
+  if (changed) store.set('top3', S.top3);
+}
+const topFirst = list => list.slice().sort((a, b) => (S.top3.indexOf(b) >= 0) - (S.top3.indexOf(a) >= 0));
+
 /* ---------- formatting ---------- */
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 function pct(units) { return (units / 10).toFixed(1) + '%'; }
@@ -571,7 +648,8 @@ function render() {
 
 function tabBar() {
   const t = (id, label, icon) => '<button class="tab" role="tab" data-tab="' + id + '" aria-selected="' + (S.tab === id) + '">' + icon + label + '</button>';
-  return '<nav class="tabs" role="tablist">' + t('symbols', 'Symbols', ICON.list) + t('ranking', 'Ranking', ICON.rank) + t('simulate', 'Simulate', ICON.sim) + '</nav>';
+  const arrow = '<span class="flow" aria-hidden="true">' + ICON.chev + '</span>';
+  return '<nav class="tabs" role="tablist">' + t('simulate', 'Simulate', ICON.sim) + arrow + t('symbols', 'Symbols', ICON.list) + arrow + t('ranking', 'Ranking', ICON.rank) + '</nav>';
 }
 
 function appbar(right) {
@@ -607,16 +685,17 @@ function bindLock() {
 
 /* Symbols */
 function symbolsView() {
-  const cur = S.tickers.map(t => '<span class="chip">' + esc(t) + '<button class="x" data-rm="' + esc(t) + '" aria-label="Remove ' + esc(t) + '">' + ICON.x + '</button></span>').join('');
-  const recent = S.history.filter(t => S.tickers.indexOf(t) < 0).slice(0, 40);
-  const rec = recent.map(t => '<button class="chip add" data-add="' + esc(t) + '">+ <b>' + esc(t) + '</b></button>').join('');
+  const cur = topFirst(S.tickers).map(t => '<span class="chip' + (S.top3.indexOf(t) >= 0 ? ' top' : '') + '">' + (S.sectors[t] ? swatch(S.sectors[t]) : '') + '<span class="t">' + esc(t) + '</span><button class="x" data-rm="' + esc(t) + '" aria-label="Remove ' + esc(t) + '">' + ICON.x + '</button></span>').join('');
+  const recent = topFirst(S.history.filter(t => S.tickers.indexOf(t) < 0).slice(0, 40));
+  const rec = recent.map(t => '<button class="chip add' + (S.top3.indexOf(t) >= 0 ? ' top' : '') + '" data-add="' + esc(t) + '">+ <b>' + esc(t) + '</b></button>').join('');
+  const legend = S.top3.length ? '<span class="eyebrow" style="text-transform:none;letter-spacing:0"><span class="legend-dot"></span>was top 3</span>' : '';
   let busy = '';
   if (S.busy) busy = '<div class="card busy"><div class="spin"></div><div><b>Fetching ' + S.tickers.length + ' symbols from Yahoo Finance</b><div class="hint" id="busyT">' + busyText() + '</div></div></div>';
   return appbar(S.payload ? 'Last run ' + esc(asOf(S.payload.asOf)) : '') +
     '<h1 class="h2" style="margin-top:6px">Which stocks should I compare?</h1>' +
     '<form class="field" id="addForm" autocomplete="off"><input class="input" id="tick" placeholder="Type symbols, e.g. NVDA MSFT" value="' + esc(S.draft) + '" autocapitalize="characters" autocorrect="off" spellcheck="false" enterkeyhint="done" aria-label="Add symbols"><button class="btn" type="submit" aria-label="Add">' + ICON.plus + '</button></form>' +
-    '<div class="hint">Separate with a space or comma. Symbols you used before appear under Recent.</div>' +
-    '<div class="toolrow" style="margin-top:18px"><span class="eyebrow">This run · ' + S.tickers.length + '</span>' +
+
+    '<div class="toolrow" style="margin-top:18px"><span class="eyebrow">This run · ' + S.tickers.length + '</span>' + legend +
     (S.tickers.length ? '<button class="btn sm" data-act="clear">Clear</button>' : '') + '</div>' +
     (S.tickers.length ? '<div class="chips">' + cur + '</div>' : '<div class="card empty"><b>No symbols yet</b>Type a few above or tap one under Recent.</div>') +
     '<button class="btn primary block" style="margin-top:16px;height:50px;font-size:16px" data-act="run"' + (S.busy || !S.tickers.length ? ' disabled' : '') + '>' + ICON.play + (S.busy ? 'Running…' : 'Run ranking') + '</button>' +
@@ -634,44 +713,62 @@ function rankRow(r, maxScore, opts) {
   if (s.noData) tags.push('<span class="tag none">No data</span>');
   const sub = s.noData ? (s.error ? 'Yahoo returned no data' : 'Most data missing') : [s.sector, s.industry].filter(Boolean).join(' · ') || (s.name || '');
   const delta = opts && opts.delta != null ? (opts.delta > 0 ? '<span class="delta up">▲' + opts.delta + '</span>' : opts.delta < 0 ? '<span class="delta down">▼' + (-opts.delta) + '</span>' : '<span class="delta same">–</span>') : '';
-  const right = '<div class="sc"><div class="v">' + r.score.toFixed(1) + '</div><div class="p">' + (opts && opts.was ? 'was #' + opts.was : (r.pen < 1 ? '×' + r.pen.toFixed(2) : 'no penalty')) + '</div></div>';
+  const right = '<div class="sc"><div class="v">' + r.score.toFixed(1) + '</div>' + (opts && opts.was ? '<div class="p">was #' + opts.was + '</div>' : '') + '</div>';
   return '<button class="row' + (r.rank <= 3 ? ' top' : '') + '" data-open="' + esc(s.t) + '" data-model="' + (opts && opts.model || 'default') + '">' +
     '<span class="rk">' + r.rank + '</span>' +
-    '<span class="mid"><span class="tk">' + esc(s.t) + ' ' + tags.join('') + delta + '</span><span class="sub">' + esc(sub) + '</span>' +
+    '<span class="mid"><span class="tk">' + swatch(s.sector) + esc(s.t) + ' ' + tags.join('') + delta + '</span><span class="sub">' + esc(sub) + '</span>' +
     '<span class="bar"><i style="width:' + Math.max(0, Math.min(100, r.score / maxScore * 100)).toFixed(1) + '%"></i></span></span>' +
     right + '</button>';
 }
 function rankingView() {
-  if (!S.payload) return appbar('') + '<div class="card empty" style="margin-top:20px"><b>No ranking yet</b>Pick symbols and tap Run ranking.</div><button class="btn primary block" style="margin-top:12px" data-tab-go="symbols">Choose symbols</button>';
+  if (!S.payload) return appbar('') + '<div class="card empty" style="margin-top:20px"><b>No ranking yet</b></div><button class="btn primary block" style="margin-top:14px" data-tab-go="symbols">' + ICON.list + 'Choose symbols</button>';
   const am = appliedModel();
-  const rows = evaluate(am);
-  const max = Math.max(1, rows.length ? rows[0].score : 1);
+  const all = evaluate(am);
+  const max = Math.max(1, all.length ? all[0].score : 1);
   const P = S.payload;
-  let was = null;
-  if (am) { was = new Map(evaluate(null).map(r => [r.s.t, r.rank])); }
+  const was = am ? new Map(evaluate(null).map(r => [r.s.t, r.rank])) : null;
+  const nPen = all.filter(r => r.pen < 1).length, nClean = all.length - nPen;
+  const rows = all.filter(r => S.penFilter === 'pen' ? r.pen < 1 : S.penFilter === 'clean' ? r.pen >= 1 : true);
+  const mail = mailButton(all, am);
   return appbar(esc(asOf(P.asOf))) +
-    (P.preview ? '<div class="note" style="margin-top:0">Preview built from your Excel of 13 Nov 2026. Live data loads in the deployed app.</div>' : '') +
-    '<div class="rank-head"><div><div class="eyebrow">' + (am ? 'Your weights' : 'Default weights') + ' · ' + rows.length + ' symbols</div><div class="h2" style="margin:0">Ranking</div></div>' +
-    (am ? '<button class="btn sm" data-act="unapply">' + ICON.reset + 'Default</button>' : '<div class="muted" style="font-size:12px;text-align:right">Score 0–100<br>tap a stock for detail</div>') + '</div>' +
-    (am ? '<div class="hint" style="margin:-2px 0 10px">▲▼ = places gained or lost vs your default weights.</div>' : '') +
-    '<div class="rows">' + rows.map(r => rankRow(r, max, am ? { model: 'applied', delta: was.get(r.s.t) - r.rank, was: was.get(r.s.t) } : { model: 'default' })).join('') + '</div>' +
-    '<div class="hint" style="margin-top:12px">Scores are relative to this list. Each metric is scaled between the lowest and highest value among these symbols, so adding or removing a symbol can change everyone’s score.</div>';
+    (P.preview ? '<div class="note" style="margin:0 0 12px">Preview · Excel of 13 Nov 2026</div>' : '') +
+    '<div class="rank-head"><div><div class="eyebrow">' + (am ? 'Your weights' : 'Default weights') + '</div><div class="h2" style="margin:0">Ranking</div></div>' +
+    '<div class="head-actions">' + (am ? '<button class="icon-btn" data-act="unapply" aria-label="Back to default weights" title="Back to default weights">' + ICON.reset + '</button>' : '') + mail + '</div></div>' +
+    '<div class="filters" role="group" aria-label="Filter by penalty">' +
+    '<button class="fchip" data-pf="pen" aria-pressed="' + (S.penFilter === 'pen') + '">Penalty <span>' + nPen + '</span></button>' +
+    '<button class="fchip" data-pf="clean" aria-pressed="' + (S.penFilter === 'clean') + '">No penalty <span>' + nClean + '</span></button></div>' +
+    '<div class="rows">' + (rows.length ? rows.map(r => rankRow(r, max, am ? { model: 'applied', delta: was.get(r.s.t) - r.rank, was: was.get(r.s.t) } : { model: 'default' })).join('') : '<div class="card empty">None</div>') + '</div>';
+}
+
+function mailText(rows, am) {
+  const P = S.payload;
+  const lines = rows.map(r => (String(r.rank).padStart(2) + '. ' + r.s.t.padEnd(6) + ' ' + r.score.toFixed(1).padStart(5) + (r.pen < 1 ? '   penalty x' + r.pen.toFixed(2) : '') + (r.s.noData ? '   no data' : '')));
+  const subject = 'Stock Ranker · ' + asOf(P.asOf);
+  const body = 'Stock Ranker ranking, ' + asOf(P.asOf) + '\n' + (am ? 'Your weights' : 'Default weights') + ' · ' + rows.length + ' symbols\n\n' + lines.join('\n') +
+    '\n\nScores are relative to this list. Not investment advice.\n';
+  return { subject: subject, body: body };
+}
+function mailButton(rows, am) {
+  const m = mailText(rows, am);
+  if (S.mailReady) return '<button class="icon-btn" data-act="mail" aria-label="Email me this ranking" title="Email me this ranking"' + (S.mailBusy ? ' disabled' : '') + '>' + ICON.mail + '</button>';
+  const href = 'mailto:' + encodeURIComponent(S.mailTo || '') + '?subject=' + encodeURIComponent(m.subject) + '&body=' + encodeURIComponent(m.body);
+  return '<a class="icon-btn" href="' + esc(href) + '" target="_blank" rel="noopener" aria-label="Email this ranking" title="Email this ranking">' + ICON.mail + '</a>';
 }
 
 /* Simulate */
 function simulateView() {
-  if (!S.payload) return appbar('') + '<div class="card empty" style="margin-top:20px"><b>Run a ranking first</b>The simulator re-scores the symbols from your last run.</div><button class="btn primary block" style="margin-top:12px" data-tab-go="symbols">Choose symbols</button>';
   const sim = S.sim, tot = sum(sim.w), ok = tot === TOTAL;
-  const base = evaluate(null), cur = ok ? evaluate(sim) : null;
+  const base = evaluate(null), cur = ok && S.payload ? evaluate(sim) : null;
   const was = new Map(base.map(r => [r.s.t, r.rank]));
   let movers = '';
-  if (cur) {
+  if (!S.payload) movers = '<span class="mover">Run symbols to see the effect</span>';
+  else if (cur) {
     const changed = cur.map(r => ({ t: r.s.t, d: was.get(r.s.t) - r.rank, r: r.rank })).filter(x => x.d !== 0).sort((a, b) => Math.abs(b.d) - Math.abs(a.d));
     movers = changed.length ? changed.slice(0, 12).map(x => '<span class="mover"><b>' + esc(x.t) + '</b>#' + x.r + '<span class="delta ' + (x.d > 0 ? 'up' : 'down') + '" style="min-width:0">' + (x.d > 0 ? '▲' : '▼') + Math.abs(x.d) + '</span></span>').join('') : '<span class="mover">Same order as default</span>';
   } else movers = '<span class="mover" style="color:var(--down)">Fix the total under 29 weights</span>';
   const changedCount = cur ? cur.filter(r => was.get(r.s.t) !== r.rank).length : 0;
   const pdef = isDefaultPenalty();
-  const head = ok ? (isDefaultWeights() && pdef ? 'Default' : changedCount + ' rank change' + (changedCount === 1 ? '' : 's')) : (tot < TOTAL ? pct(TOTAL - tot) + ' missing' : pct(tot - TOTAL) + ' too much');
+  const head = !S.payload ? (isDefaultWeights() && pdef ? 'Default' : 'Custom weights') : ok ? (isDefaultWeights() && pdef ? 'Default' : changedCount + ' rank change' + (changedCount === 1 ? '' : 's')) : (tot < TOTAL ? pct(TOTAL - tot) + ' missing' : pct(tot - TOTAL) + ' too much');
   const sub = ok ? (sameAsApplied() ? (appliedModel() ? 'In use on Ranking' : 'Ranking uses default') : 'Tap ▶ to use on Ranking') : 'Weights do not add up';
 
   const bar =
@@ -695,6 +792,7 @@ function simulateView() {
 }
 
 function resultsPanel(cur, was) {
+  if (!S.payload) return '<div class="card empty" style="margin-top:12px"><b>No run yet</b></div><button class="btn primary block" style="margin-top:12px" data-tab-go="symbols">' + ICON.list + 'Choose symbols</button>';
   if (!cur) return '<div class="err">The 29 weights add up to ' + pct(sum(S.sim.w)) + '. Bring them to 96.0% (or switch on auto-balance under 29 weights) to see the simulated ranking.</div>';
   const max = Math.max(1, cur.length ? cur[0].score : 1);
   return '<div class="rows" style="margin-top:12px">' + cur.map(r => rankRow(r, max, { model: 'sim', delta: was.get(r.s.t) - r.rank, was: was.get(r.s.t) })).join('') + '</div>';
@@ -754,7 +852,7 @@ function weightRow(i) {
 }
 
 function penaltyPanel() {
-  const sim = S.sim, stocks = S.payload.stocks;
+  const sim = S.sim, stocks = S.payload ? S.payload.stocks : [];
   const hasResidual = stocks.some(s => s.residual !== 1);
   let html = '<div class="card" style="padding:12px 14px;margin-top:14px"><div class="toolrow" style="margin:0"><b style="font-size:14px">Penalty strength</b><span class="num" id="kval">' + sim.k + '%</span></div>' +
     '<input class="slider" type="range" id="kslider" min="0" max="100" step="5" value="' + sim.k + '" aria-label="Penalty strength">' +
@@ -762,7 +860,7 @@ function penaltyPanel() {
     '<div class="card" style="margin-top:10px">';
   M.rules.forEach((r, j) => {
     const n = stocks.filter(s => s.hits[j]).length;
-    html += '<div class="pen-row"><div class="t">' + esc(r.label) + '<small>' + (n ? 'Hits ' + n + ' of ' + stocks.length : 'Hits none in this list') + '</small></div><span class="m">×' + r.mult + '</span>' +
+    html += '<div class="pen-row"><div class="t">' + esc(r.label) + (stocks.length ? '<small>' + (n ? 'Hits ' + n + ' of ' + stocks.length : 'Hits none') + '</small>' : '') + '</div><span class="m">×' + r.mult + '</span>' +
       '<label class="switch"><input type="checkbox" data-rule="' + j + '"' + (sim.on[j] ? ' checked' : '') + ' aria-label="' + esc(r.label) + '"></label></div>';
   });
   html += '</div>';
@@ -806,10 +904,10 @@ function detailView() {
       '<span class="sp">SPEC ' + esc(m.spec) + ' · weight ' + pct(Math.round(w[i] * 1000)) + '</span><span class="rel">' + (s.raw[i] == null ? 'scored 0' : 'vs list ' + Math.round(s.norm[i] * 100) + '/100') + '</span></div>';
   };
   const section = (key, title, hint) => groups[key].length ? '<div class="sec-h"><span class="dot ' + STATUS[key].cls + '"></span><span class="h">' + title + ' · ' + groups[key].length + '</span></div>' + (hint ? '<div class="hint" style="margin:-4px 0 8px">' + hint + '</div>' : '') + '<div class="card slist">' + groups[key].sort((a, b) => w[b] - w[a]).map(sRow).join('') + '</div>' : '';
-  let spec = section('exceptional', 'Strong vs SPEC', 'Beats the threshold by ' + M.factor + '× or more.') +
-    section('fail', 'Out of spec', null) +
+  const bad = section('fail', 'Out of spec', null) +
     section('outside', 'Outside the range', 'Outside a min–max SPEC on the side the score still rewards.') +
-    section('nodata', 'No data', 'Missing from Yahoo; the notebook scores these as 0.');
+    section('nodata', 'No data', 'Missing from Yahoo; scored as 0.');
+  let spec = section('exceptional', 'Strong vs SPEC', 'Beats the threshold by ' + M.factor + '× or more.');
   if (groups.pass.length) spec += '<details class="more card" style="margin-top:10px"><summary><span>In spec · ' + groups.pass.length + '</span><span>Show</span></summary><div class="slist">' + groups.pass.sort((a, b) => w[b] - w[a]).map(sRow).join('') + '</div></details>';
 
   // penalties
@@ -838,12 +936,13 @@ function detailView() {
     '<div class="stats"><div class="stat"><div class="k">Rank</div><div class="v">#' + r.rank + ' <small>/ ' + total + '</small></div></div>' +
     '<div class="stat"><div class="k">Score</div><div class="v">' + r.score.toFixed(1) + '</div></div>' +
     '<div class="stat"><div class="k">Penalty</div><div class="v" style="color:var(' + (r.pen < 1 ? '--down' : '--fg') + ')">×' + r.pen.toFixed(2) + '</div></div></div>' +
-    '<div class="sec-h"><span class="dot acc"></span><span class="h">Where the points come from</span></div>' +
-    '<div class="hint" style="margin:-4px 0 8px">Points earned out of the points each group can give. Max before penalty is 102: Price to target counts twice in the notebook.</div>' +
-    '<div class="card build">' + build + '</div>' +
-    spec +
+    (bad || '<div class="card empty" style="margin-top:14px;padding:16px">Nothing out of spec.</div>') +
     '<div class="sec-h"><span class="dot down"></span><span class="h">Penalties</span></div>' + pen +
+    spec +
     '<div class="sec-h"><span class="dot acc"></span><span class="h">Momentum</span></div>' + mom +
+    '<div class="sec-h"><span class="dot acc"></span><span class="h">Summary: where the points come from</span></div>' +
+    '<div class="hint" style="margin:-4px 0 8px">Points earned / possible per group. Max 102 before penalty (Price to target counts twice).</div>' +
+    '<div class="card build">' + build + '</div>' +
     footer() + '</div></div>';
 }
 
@@ -852,6 +951,7 @@ function bind() {
   app.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => { if (b.classList.contains('tab')) { S.tab = b.dataset.tab; S.detail = null; render(); } }));
   app.querySelectorAll('[data-tab-go]').forEach(b => b.addEventListener('click', () => { S.tab = b.dataset.tabGo; render(); }));
   app.querySelectorAll('[data-open]').forEach(b => b.addEventListener('click', () => { S.detail = { t: b.dataset.open, model: b.dataset.model }; render(); const v = app.querySelector('.sheet .view'); if (v) v.scrollTop = 0; }));
+  app.querySelectorAll('[data-pf]').forEach(b => b.addEventListener('click', () => { S.penFilter = S.penFilter === b.dataset.pf ? null : b.dataset.pf; render(); }));
   app.querySelectorAll('[data-panel]').forEach(b => b.addEventListener('click', () => { S.panel = b.dataset.panel; render(); }));
   app.querySelectorAll('[data-rm]').forEach(b => b.addEventListener('click', () => removeTicker(b.dataset.rm)));
   app.querySelectorAll('[data-add]').forEach(b => b.addEventListener('click', () => { addTickers(b.dataset.add); render(); }));
@@ -890,7 +990,8 @@ function act(a) {
   else if (a === 'undo') undo();
   else if (a === 'default') { const b = snapshot(); const locks = S.sim.locks.map(() => false); Object.assign(S.sim, { w: M.wDef.slice(), k: 100, on: M.rules.map(() => true), locks: locks }); commit(b); render(); toast('Back to your default weights'); }
   else if (a === 'copy') copyPython();
-  else if (a === 'apply') { if (!weightsValid()) return; S.applied = isDefaultModel(S.sim) ? null : { w: S.sim.w.slice(), k: S.sim.k, on: S.sim.on.slice() }; store.set('applied', S.applied); S.tab = 'ranking'; S.detail = null; scrollMemo.ranking = 0; render(); toast(S.applied ? 'Ranking now uses your weights' : 'Ranking uses default weights'); }
+  else if (a === 'apply') { if (!weightsValid()) return; S.applied = isDefaultModel(S.sim) ? null : { w: S.sim.w.slice(), k: S.sim.k, on: S.sim.on.slice() }; store.set('applied', S.applied); S.tab = S.payload ? 'ranking' : 'symbols'; S.detail = null; scrollMemo.ranking = 0; render(); toast(S.applied ? 'Ranking now uses your weights' : 'Ranking uses default weights'); }
+  else if (a === 'mail') { if (!S.payload || S.mailBusy) return; const am = appliedModel(); const m = mailText(evaluate(am), am); S.mailBusy = true; S.pendingId = newId(); ST.value({ type: 'mail', id: S.pendingId, subject: m.subject, body: m.body }); render(); }
   else if (a === 'unapply') { S.applied = null; store.set('applied', null); render(); toast('Ranking back to default weights'); }
   else if (a === 'close') { S.detail = null; render(); }
 }
@@ -1002,6 +1103,7 @@ function onRender(args) {
   const wasAuthed = S.authed;
   S.authed = !!args.authed;
   if (args.token) store.set('token', args.token);
+  S.mailReady = !!args.mailReady; S.mailTo = args.mailTo || null;
   if (args.ack && args.ack === S.pendingId) {
     S.pendingId = null;
     if (S.authBusy) {
@@ -1013,10 +1115,12 @@ function onRender(args) {
       }
     }
     if (S.busy) { S.busy = false; S.runError = args.error || null; }
+    if (S.mailBusy) { S.mailBusy = false; setTimeout(() => toast(args.error || args.notice || 'Sent'), 0); }
   }
   if (args.payload && args.payloadId && args.payloadId !== S.payloadId) {
     S.payload = args.payload; S.payloadId = args.payloadId;
     store.set('payload', args.payload);
+    rememberRun(args.payload);
     if (S.tab === 'symbols') S.tab = 'ranking';
     S.detail = null;
   }
@@ -1042,6 +1146,7 @@ if (LIVE) {
 } else {
   initMeta(BOOT.meta);
   S.payload = BOOT.payload; S.authed = true;
+  rememberRun(BOOT.payload);
   if (!store.get('tickers', null)) S.tickers = BOOT.payload.stocks.map(s => s.t);
   S.tab = 'ranking';
   render();

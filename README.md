@@ -19,7 +19,8 @@ The original notebook is untouched. `core.py` copies its model blocks verbatim (
 1. Sign in at share.streamlit.io with **Continue with GitHub**.
 2. **Create app** → repository `stock-ranker`, branch `main`, main file `streamlit_app.py`, pick a short URL.
 3. **Advanced settings → Secrets**: `APP_PASSWORD = "your-code"`.
-4. Deploy. On the phone: open the URL, enter the code once, then Add to Home Screen.
+4. Optional, for the email button to send by itself: also add `SMTP_USER` (your Gmail address), `SMTP_PASSWORD` (a Gmail app password) and `MAIL_TO` (where to send). Without them the button opens your mail app with the ranking filled in.
+5. Deploy. On the phone: open the URL, enter the code once, then Add to Home Screen.
 
 ## How the model is used
 
